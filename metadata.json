@@ -1,0 +1,5 @@
+{
+  "name": "Ma3Pay - NFC Travel Tokens",
+  "description": "A modern matatu travel token system allowing users to purchase NFC-linked tokens via M-Pesa and redeem them for travel, featuring an AI-powered route assistant.",
+  "requestFramePermissions": []
+}
