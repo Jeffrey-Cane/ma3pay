@@ -4,7 +4,7 @@ import { SYSTEM_INSTRUCTION } from "../constants";
 let chatSession: Chat | null = null;
 
 // Initialize the API client using the environment variable
-const ai = new GoogleGenAI({ apiKey: "AIzaSyAdd6QFl0GudddP6kLIbhNU1w71ZhvQYmI" });
+const ai = new GoogleGenAI({ apiKey: "" });
 
 export const getChatSession = (): Chat => {
   if (!chatSession) {
