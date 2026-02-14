@@ -179,7 +179,7 @@ export const PaymentPage: React.FC<PaymentPageProps> = ({ amount, nfcTagId, onBa
           </div>
         </div>
 
-        {/* Daraja/M-Pesa Form */}
+        {/* PayHero STK Push Form */}
         <div className="space-y-4">
             <h3 className={`font-bold flex items-center gap-2 ${isDark ? 'text-white' : 'text-gray-800'}`}>
                 <Smartphone className="w-5 h-5 text-green-600" />

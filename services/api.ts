@@ -5,7 +5,7 @@ import { initiateSTKPush, checkTransactionStatus } from './payheroService';
 // Use localhost for local development.
 // The backend runs on port 5000 (Vite uses 3000 for the frontend).
 // Change this to your ngrok URL if testing on a real device/mobile.
-const API_URL = 'https://51bf-41-89-164-2.ngrok-free.app';
+const API_URL = 'https://af68-41-89-164-2.ngrok-free.app';
 
 const api = axios.create({
     baseURL: API_URL,
