@@ -1,6 +1,6 @@
 import React from 'react';
 import { Transaction, TransactionType } from '../types';
-import { ArrowDownLeft, ArrowUpRight, Bus, Clock } from 'lucide-react';
+import { ArrowDownLeft, ArrowUpRight, Bus, Clock, Send } from 'lucide-react';
 import { TRANSLATIONS } from '../constants';
 
 interface Props {
@@ -36,10 +36,18 @@ export const TransactionHistory: React.FC<Props> = ({ history, isDark, lang }) =
                 <div className={`w-10 h-10 rounded-full flex items-center justify-center ${
                   tx.type === TransactionType.DEPOSIT 
                     ? (isDark ? 'bg-green-900/30 text-green-400' : 'bg-green-100 text-green-600')
+                    : tx.type === TransactionType.TRANSFER_IN
+                    ? (isDark ? 'bg-blue-900/30 text-blue-400' : 'bg-blue-100 text-blue-600')
+                    : tx.type === TransactionType.TRANSFER_OUT
+                    ? (isDark ? 'bg-orange-900/30 text-orange-400' : 'bg-orange-100 text-orange-600')
                     : (isDark ? 'bg-yellow-900/30 text-yellow-400' : 'bg-yellow-100 text-yellow-600')
                 }`}>
                   {tx.type === TransactionType.DEPOSIT ? (
                     <ArrowDownLeft className="w-5 h-5" />
+                  ) : tx.type === TransactionType.TRANSFER_IN ? (
+                    <ArrowDownLeft className="w-5 h-5" />
+                  ) : tx.type === TransactionType.TRANSFER_OUT ? (
+                    <Send className="w-5 h-5" />
                   ) : (
                     <Bus className="w-5 h-5" />
                   )}
@@ -52,9 +60,11 @@ export const TransactionHistory: React.FC<Props> = ({ history, isDark, lang }) =
                 </div>
               </div>
               <div className={`font-bold ${
-                tx.type === TransactionType.DEPOSIT ? 'text-green-500' : (isDark ? 'text-white' : 'text-gray-900')
+                tx.type === TransactionType.DEPOSIT || tx.type === TransactionType.TRANSFER_IN
+                  ? 'text-green-500' 
+                  : (isDark ? 'text-white' : 'text-gray-900')
               }`}>
-                {tx.type === TransactionType.DEPOSIT ? '+' : '-'} {tx.amount}
+                {tx.type === TransactionType.DEPOSIT || tx.type === TransactionType.TRANSFER_IN ? '+' : '-'} {tx.amount}
               </div>
             </div>
           ))}

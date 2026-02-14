@@ -1,9 +1,11 @@
 import axios from 'axios';
 import { Transaction, TransactionType, PaymentStatus } from '../types';
+import { initiateSTKPush, checkTransactionStatus } from './payheroService';
 
-// Use localhost for local development. 
-// Change this back to your ngrok URL if testing on a real device/mobile.
-const API_URL = 'http://localhost:3000';
+// Use localhost for local development.
+// The backend runs on port 5000 (Vite uses 3000 for the frontend).
+// Change this to your ngrok URL if testing on a real device/mobile.
+const API_URL = 'https://51bf-41-89-164-2.ngrok-free.app';
 
 const api = axios.create({
     baseURL: API_URL,
@@ -34,9 +36,29 @@ export const auth = {
 };
 
 export const wallet = {
-    deposit: async (amount: number) => {
-        const response = await api.post('/wallet/deposit', { amount });
-        return response.data;
+    /**
+     * Initiate a deposit via PayHero STK Push.
+     * Returns the PayHero response with reference for status polling.
+     */
+    deposit: async (amount: number, phone: string) => {
+        // 1. Call PayHero STK Push directly from the frontend
+        const stkResult = await initiateSTKPush(amount, phone);
+        if (!stkResult.success) {
+            throw new Error(stkResult.error || 'PayHero STK Push failed');
+        }
+        // 2. Also notify our backend so it records the pending deposit
+        try {
+            await api.post('/wallet/deposit', { amount });
+        } catch (e) {
+            console.warn('Backend deposit notification failed (non-blocking):', e);
+        }
+        return stkResult;
+    },
+    /**
+     * Poll PayHero for transaction confirmation by reference
+     */
+    checkPayment: async (reference: string) => {
+        return await checkTransactionStatus(reference);
     },
     transfer: async (recipientPhone: string, amount: number) => {
         const response = await api.post('/wallet/transfer', { recipientPhone, amount });

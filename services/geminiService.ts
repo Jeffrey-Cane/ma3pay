@@ -2,13 +2,23 @@ import { GoogleGenAI, Chat, GenerateContentResponse } from "@google/genai";
 import { SYSTEM_INSTRUCTION } from "../constants";
 
 let chatSession: Chat | null = null;
+let ai: GoogleGenAI | null = null;
 
-// Initialize the API client using the environment variable
-const ai = new GoogleGenAI({ apiKey: "" });
+// Safely read the API key injected by Vite's define config.
+// Falls back to empty string if no .env file is present.
+const GEMINI_KEY: string = (typeof process !== 'undefined' && process.env?.GEMINI_API_KEY) || '';
+
+// Lazy-initialise the SDK so a missing key never crashes module load
+function getAI(): GoogleGenAI {
+  if (!ai) {
+    ai = new GoogleGenAI({ apiKey: GEMINI_KEY });
+  }
+  return ai;
+}
 
 export const getChatSession = (): Chat => {
   if (!chatSession) {
-    chatSession = ai.chats.create({
+    chatSession = getAI().chats.create({
       model: 'gemini-2.5-flash',
       config: {
         systemInstruction: SYSTEM_INSTRUCTION,

@@ -23,7 +23,7 @@ export const PaymentPage: React.FC<PaymentPageProps> = ({ amount, nfcTagId, onBa
 
   const handlePay = async () => {
     if (!phoneNumber.startsWith('254') && !phoneNumber.startsWith('07') && !phoneNumber.startsWith('01')) {
-      alert("Please enter a valid Safaricom number");
+      alert("Please enter a valid phone number (07XX or 254...)");
       return;
     }
 
@@ -31,50 +31,54 @@ export const PaymentPage: React.FC<PaymentPageProps> = ({ amount, nfcTagId, onBa
     setErrorMessage('');
 
     try {
-        await wallet.deposit(amount);
+        // Initiate PayHero STK Push
+        const stkResult = await wallet.deposit(amount, phoneNumber);
+        
         setStatus('push_sent');
         setIsPolling(true);
-        
-        // POLL FOR CALLBACK (Wait for ~18s)
-        let confirmedTx: Transaction | null = null;
-        const maxRetries = 6; // 6 * 3s = 18s
-        
-        for (let i = 0; i < maxRetries; i++) {
-            // Wait 3s before checking
-            await new Promise(resolve => setTimeout(resolve, 3000));
-            
-            try {
-                const history = await wallet.getActivity();
-                // Look for a recent deposit of this amount
-                // We check the first few items since getActivity returns sorted desc
-                const match = history.find(tx => 
-                    tx.type === TransactionType.DEPOSIT && 
-                    tx.amount === amount &&
-                    // Ensure it's very recent (last 2 mins) to avoid matching old txs
-                    (new Date().getTime() - new Date(tx.date).getTime() < 120000)
-                );
-                
-                if (match) {
-                    confirmedTx = match;
-                    break; 
+
+        // Poll PayHero for confirmation (~24s: 8 retries x 3s)
+        const reference = stkResult.reference || stkResult.merchant_reference;
+        let confirmed = false;
+
+        if (reference) {
+            const maxRetries = 8;
+            for (let i = 0; i < maxRetries; i++) {
+                await new Promise(resolve => setTimeout(resolve, 3000));
+                try {
+                    const statusResult = await wallet.checkPayment(reference);
+                    if (statusResult.status === 'SUCCESS') {
+                        confirmed = true;
+                        break;
+                    }
+                    if (statusResult.status === 'FAILED') {
+                        throw new Error('Payment was declined or failed.');
+                    }
+                } catch (e: any) {
+                    if (e.message?.includes('declined') || e.message?.includes('failed')) throw e;
+                    console.warn("Poll check failed, retrying...", e);
                 }
-            } catch (e) {
-                console.error("Polling check failed", e);
             }
         }
 
         setIsPolling(false);
 
-        if (confirmedTx) {
-             setStatus('success');
-             setTimeout(() => {
-                onSuccess(confirmedTx!); 
+        if (confirmed) {
+            setStatus('success');
+            setTimeout(() => {
+                onSuccess({
+                    id: `PH-${reference || Date.now()}`,
+                    type: TransactionType.DEPOSIT,
+                    amount: amount,
+                    date: new Date().toISOString(),
+                    description: t.topupDesc,
+                    status: PaymentStatus.SUCCESS
+                });
             }, 2000);
         } else {
-            // Fallback: If we didn't detect it (e.g. callback slow), 
-            // we still show success to not block user, but mark as PENDING.
+            // Fallback: PayHero callback may be slow; show success as PENDING
             setStatus('success');
-             setTimeout(() => {
+            setTimeout(() => {
                 onSuccess({
                     id: `PENDING-${Date.now()}`,
                     type: TransactionType.DEPOSIT,
@@ -88,8 +92,7 @@ export const PaymentPage: React.FC<PaymentPageProps> = ({ amount, nfcTagId, onBa
 
     } catch (error: any) {
         console.error("Payment Failed", error);
-        const msg = error.response?.data?.error || "Connection Error. Please try again.";
-        alert(`Payment Failed: ${msg}`);
+        const msg = error.response?.data?.error || error.message || "Connection Error. Please try again.";
         setStatus('error');
         setErrorMessage(msg);
         setIsPolling(false);
@@ -153,7 +156,7 @@ export const PaymentPage: React.FC<PaymentPageProps> = ({ amount, nfcTagId, onBa
         <button onClick={onBack} className={`p-2 rounded-full transition-colors ${isDark ? 'hover:bg-gray-700 text-white' : 'hover:bg-gray-100 text-gray-800'}`}>
           <ArrowLeft />
         </button>
-        <h2 className={`text-xl font-bold ${isDark ? 'text-white' : 'text-gray-900'}`}>M-Pesa Checkout</h2>
+        <h2 className={`text-xl font-bold ${isDark ? 'text-white' : 'text-gray-900'}`}>PayHero Checkout</h2>
       </div>
 
       <div className="p-6 flex-1 overflow-y-auto space-y-6">
@@ -180,7 +183,7 @@ export const PaymentPage: React.FC<PaymentPageProps> = ({ amount, nfcTagId, onBa
         <div className="space-y-4">
             <h3 className={`font-bold flex items-center gap-2 ${isDark ? 'text-white' : 'text-gray-800'}`}>
                 <Smartphone className="w-5 h-5 text-green-600" />
-                M-Pesa STK Push
+                PayHero STK Push
             </h3>
             
             <div className="space-y-2">
@@ -223,7 +226,7 @@ export const PaymentPage: React.FC<PaymentPageProps> = ({ amount, nfcTagId, onBa
                         <p className={isDark ? 'text-green-200' : 'text-green-700'}>
                             {isPolling 
                                 ? 'Please enter your PIN on your phone.' 
-                                : 'Initiating Daraja API...'}
+                                : 'Connecting to PayHero...'}
                         </p>
                     </div>
                  </div>
@@ -232,7 +235,7 @@ export const PaymentPage: React.FC<PaymentPageProps> = ({ amount, nfcTagId, onBa
 
         <div className="flex items-center justify-center gap-2 text-xs text-gray-400 mt-8">
             <ShieldCheck className="w-4 h-4" />
-            <span>Secured by Safaricom Daraja API</span>
+            <span>Secured by PayHero Payment Gateway</span>
         </div>
 
       </div>
